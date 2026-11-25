@@ -1,24 +1,30 @@
-import { useState } from 'react';
 import type { MouseEvent } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion, useSpring } from 'motion/react';
 import { HERO_STATS, PROFILE } from '../data/portfolioData';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+const POINTER_SPRING = { stiffness: 120, damping: 20 };
 
 export function HeroSection() {
-  const [pointer, setPointer] = useState({ x: 0, y: 0 });
+  const reduceMotion = useReducedMotion();
+  const pointerX = useSpring(0, POINTER_SPRING);
+  const pointerY = useSpring(0, POINTER_SPRING);
 
-  const handleMove = (e: MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const nx = (e.clientX - rect.left) / rect.width - 0.5;
-    const ny = (e.clientY - rect.top) / rect.height - 0.5;
-    setPointer({ x: nx * 18, y: ny * 18 });
+  const handleMove = (event: MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    pointerX.set(((event.clientX - rect.left) / rect.width - 0.5) * 18);
+    pointerY.set(((event.clientY - rect.top) / rect.height - 0.5) * 18);
+  };
+
+  const resetPointer = () => {
+    pointerX.set(0);
+    pointerY.set(0);
   };
 
   return (
     <section
       id="top"
-      className="relative overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24"
+      className="relative overflow-hidden pt-[calc(6rem+env(safe-area-inset-top))] pb-12 sm:pt-[calc(9rem+env(safe-area-inset-top))] sm:pb-24"
     >
       {/* Subtle architectural grid */}
       <div
@@ -27,44 +33,44 @@ export function HeroSection() {
       />
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-10">
+        <div className="grid items-center gap-8 sm:gap-12 lg:grid-cols-12 lg:gap-10">
           {/* Left Minimalist Editorial Column */}
           <div className="lg:col-span-7">
             {/* Eyebrow Metadata Strip */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, ease: EASE }}
-              className="inline-flex flex-wrap items-center gap-2.5 rounded-full border border-[#E5E5E4] bg-white px-3.5 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+              className="inline-flex flex-wrap items-center gap-2 rounded-full border border-[#E5E5E4] bg-white px-3 py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] sm:gap-2.5 sm:px-3.5"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-[#0A0A0A] animate-pulse-soft" />
-              <span className="font-mono text-[11px] tracking-[0.14em] text-[#404040] uppercase">
+              <span className="font-mono text-[10px] tracking-[0.08em] text-[#404040] uppercase sm:text-[11px] sm:tracking-[0.14em]">
                 UIT Yangon · Year II
               </span>
-              <span className="text-[#D4D4D2]">/</span>
-              <span className="font-mono text-[11px] tracking-[0.14em] text-[#737373] uppercase">
+              <span aria-hidden="true" className="text-[#D4D4D2]">/</span>
+              <span className="font-mono text-[10px] tracking-[0.08em] text-[#737373] uppercase sm:text-[11px] sm:tracking-[0.14em]">
                 486 Marks · CAE NPT
               </span>
             </motion.div>
 
             {/* Masked Kinetic Typography Headline */}
-            <div className="mt-7 overflow-hidden">
+            <div className="mt-5 overflow-hidden sm:mt-7">
               <motion.h1
-                initial={{ y: '105%' }}
+                initial={reduceMotion ? false : { y: '105%' }}
                 animate={{ y: '0%' }}
                 transition={{ duration: 0.72, delay: 0.06, ease: EASE }}
-                className="font-display text-5xl font-bold tracking-[-0.04em] text-[#0A0A0A] sm:text-7xl lg:text-[4.8rem] lg:leading-[0.98]"
+                className="font-display text-[clamp(2.5rem,12vw,3rem)] font-bold tracking-[-0.04em] text-[#0A0A0A] sm:text-7xl lg:text-[4.8rem] lg:leading-[0.98]"
               >
                 {PROFILE.name}
               </motion.h1>
             </div>
 
-            <div className="mt-4 overflow-hidden">
+            <div className="mt-3 overflow-hidden sm:mt-4">
               <motion.div
-                initial={{ y: '100%', opacity: 0 }}
+                initial={reduceMotion ? false : { y: '100%', opacity: 0 }}
                 animate={{ y: '0%', opacity: 1 }}
                 transition={{ duration: 0.65, delay: 0.16, ease: EASE }}
-                className="flex flex-wrap items-center gap-3"
+                className="flex flex-wrap items-center gap-x-3 gap-y-1"
               >
                 <span className="inline-flex items-center gap-2 font-display text-xl font-medium tracking-[-0.02em] text-[#0A0A0A] sm:text-2xl">
                   {PROFILE.title}
@@ -78,10 +84,10 @@ export function HeroSection() {
 
             {/* Clean Manifesto Copy */}
             <motion.p
-              initial={{ opacity: 0, y: 14 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, delay: 0.24, ease: EASE }}
-              className="mt-6 max-w-xl text-[15px] leading-relaxed text-[#525252] sm:text-base"
+              className="mt-4 max-w-xl text-[15px] leading-relaxed text-[#525252] sm:mt-6 sm:text-base"
             >
               {PROFILE.tagline} Built cleanly for real machines — spanning{' '}
               <span className="font-medium text-[#0A0A0A]">Godot 4.7</span> worlds, native{' '}
@@ -92,20 +98,20 @@ export function HeroSection() {
 
             {/* Minimal Kinetic Actions */}
             <motion.div
-              initial={{ opacity: 0, y: 14 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, delay: 0.32, ease: EASE }}
-              className="mt-9 flex flex-wrap items-center gap-3"
+              className="mt-6 flex flex-wrap gap-2 sm:mt-9 sm:gap-3"
             >
               <a
                 href="#slides"
-                className="group inline-flex items-center gap-3 rounded-full bg-[#0A0A0A] px-6 py-3.5 font-mono text-xs font-medium tracking-[0.14em] text-[#FAFAFA] uppercase transition-all hover:bg-[#262626]"
+                className="group inline-flex min-h-[46px] grow items-center justify-center gap-2 rounded-full bg-[#0A0A0A] px-3 py-2.5 font-mono text-[11px] font-medium tracking-[0.06em] whitespace-nowrap text-[#FAFAFA] uppercase transition-colors hover:bg-[#262626] sm:grow-0 sm:gap-3 sm:px-6 sm:py-3.5 sm:text-xs sm:tracking-[0.14em]"
               >
                 <span>View Project Slides</span>
                 <span className="relative flex items-center overflow-hidden">
                   <svg
                     viewBox="0 0 28 12"
-                    className="h-3 w-7 transition-transform duration-300 group-hover:translate-x-1"
+                    className="h-3 w-5 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:translate-x-1 sm:w-7"
                     fill="none"
                     aria-hidden="true"
                   >
@@ -131,7 +137,7 @@ export function HeroSection() {
 
               <a
                 href="#contact"
-                className="inline-flex items-center gap-2 rounded-full border border-[#D4D4D2] bg-white px-6 py-3.5 font-mono text-xs font-medium tracking-[0.14em] text-[#0A0A0A] uppercase transition-all hover:border-[#0A0A0A]"
+                className="inline-flex min-h-[46px] grow items-center justify-center rounded-full border border-[#D4D4D2] bg-white px-3 py-2.5 font-mono text-[11px] font-medium tracking-[0.06em] whitespace-nowrap text-[#0A0A0A] uppercase transition-colors hover:border-[#0A0A0A] sm:grow-0 sm:px-6 sm:py-3.5 sm:text-xs sm:tracking-[0.14em]"
               >
                 Get in Touch
               </a>
@@ -140,27 +146,23 @@ export function HeroSection() {
 
           {/* Right Minimalist Graphic-Motion Geometric Stage */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
-            onMouseMove={handleMove}
-            onMouseLeave={() => setPointer({ x: 0, y: 0 })}
-            className="lg:col-span-5"
+            className="mx-auto w-full max-w-[260px] sm:max-w-[340px] lg:col-span-5 lg:max-w-[400px]"
           >
-            <div className="relative mx-auto aspect-square w-full max-w-[400px] overflow-hidden rounded-[28px] border border-[#E5E5E4] bg-white p-6 shadow-[0_24px_70px_-40px_rgba(0,0,0,0.22)]">
+            <div
+              onMouseMove={reduceMotion ? undefined : handleMove}
+              onMouseLeave={resetPointer}
+              className="relative grid aspect-square grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[28px] border border-[#E5E5E4] bg-white p-4 shadow-[0_24px_70px_-40px_rgba(0,0,0,0.22)] sm:p-6"
+            >
               {/* Architectural Corner Crosshairs */}
-              <span className="pointer-events-none absolute top-4 left-4 font-mono text-[10px] text-[#A3A3A3]">
-                +
-              </span>
-              <span className="pointer-events-none absolute top-4 right-4 font-mono text-[10px] text-[#A3A3A3]">
-                +
-              </span>
-              <span className="pointer-events-none absolute bottom-4 left-4 font-mono text-[10px] text-[#A3A3A3]">
-                +
-              </span>
-              <span className="pointer-events-none absolute bottom-4 right-4 font-mono text-[10px] text-[#A3A3A3]">
-                +
-              </span>
+              <div aria-hidden="true" className="pointer-events-none absolute inset-0 font-mono text-[10px] text-[#A3A3A3]">
+                <span className="absolute top-1 left-3 sm:top-2 sm:left-4">+</span>
+                <span className="absolute top-1 right-3 sm:top-2 sm:right-4">+</span>
+                <span className="absolute bottom-1 left-3 sm:bottom-2 sm:left-4">+</span>
+                <span className="absolute right-3 bottom-1 sm:right-4 sm:bottom-2">+</span>
+              </div>
 
               {/* Top Graphic Label */}
               <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.16em] text-[#737373] uppercase">
@@ -170,9 +172,8 @@ export function HeroSection() {
 
               {/* Animated Motion-Graphics Vector Kinetic Sculpture */}
               <motion.div
-                animate={{ x: pointer.x, y: pointer.y }}
-                transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-                className="relative flex h-[calc(100%-3.2rem)] w-full items-center justify-center"
+                style={reduceMotion ? undefined : { x: pointerX, y: pointerY }}
+                className="relative flex min-h-0 items-center justify-center"
               >
                 <svg
                   viewBox="0 0 300 300"
@@ -242,7 +243,7 @@ export function HeroSection() {
                     y2="150"
                     stroke="#E5E5E4"
                     strokeWidth="1"
-                    initial={{ pathLength: 0 }}
+                    initial={reduceMotion ? false : { pathLength: 0 }}
                     animate={{ pathLength: 1 }}
                     transition={{ duration: 0.9, delay: 0.25, ease: EASE }}
                   />
@@ -253,14 +254,14 @@ export function HeroSection() {
                     y2="254"
                     stroke="#E5E5E4"
                     strokeWidth="1"
-                    initial={{ pathLength: 0 }}
+                    initial={reduceMotion ? false : { pathLength: 0 }}
                     animate={{ pathLength: 1 }}
                     transition={{ duration: 0.9, delay: 0.35, ease: EASE }}
                   />
 
                   {/* Animated Kinetic Chevron Flow < — > */}
                   <motion.g
-                    initial={{ opacity: 0 }}
+                    initial={reduceMotion ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.45, duration: 0.5 }}
                   >
@@ -271,7 +272,7 @@ export function HeroSection() {
                       strokeWidth="1.6"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      animate={{ x: [0, -3, 0] }}
+                      animate={reduceMotion ? undefined : { x: [0, -3, 0] }}
                       transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                     />
                     <motion.path
@@ -281,7 +282,7 @@ export function HeroSection() {
                       strokeWidth="1.6"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      animate={{ x: [0, 3, 0] }}
+                      animate={reduceMotion ? undefined : { x: [0, 3, 0] }}
                       transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                     />
                   </motion.g>
@@ -292,7 +293,7 @@ export function HeroSection() {
                     cy="150"
                     r="34"
                     fill="#0A0A0A"
-                    initial={{ scale: 0.7, opacity: 0 }}
+                    initial={reduceMotion ? false : { scale: 0.7, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.65, delay: 0.2, ease: EASE }}
                   />
@@ -322,22 +323,22 @@ export function HeroSection() {
 
         {/* Clean Minimalist 3-Column Index Strip */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.65, delay: 0.38, ease: EASE }}
-          className="mt-16 grid grid-cols-1 divide-y divide-[#E5E5E4] border-y border-[#E5E5E4] sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+          className="mt-8 grid grid-cols-3 divide-x divide-[#E5E5E4] border-y border-[#E5E5E4] sm:mt-12 lg:mt-16"
         >
           {HERO_STATS.map((stat) => (
-            <div key={stat.label} className="py-5 sm:px-6 sm:first:pl-0 sm:last:pr-0">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-display text-3xl font-bold tracking-[-0.03em] text-[#0A0A0A]">
+            <div key={stat.label} className="px-2.5 py-3 first:pl-0 last:pr-0 sm:px-6 sm:py-5">
+              <div className="flex flex-col gap-1 lg:flex-row lg:items-baseline lg:justify-between lg:gap-2">
+                <span className="font-display text-2xl leading-none font-bold tracking-[-0.03em] text-[#0A0A0A] sm:text-3xl">
                   {stat.value}
                 </span>
-                <span className="font-mono text-[10px] tracking-[0.16em] text-[#737373] uppercase">
+                <span className="font-mono text-[10px] tracking-[0.05em] text-[#666666] uppercase sm:tracking-[0.12em]">
                   {stat.label}
                 </span>
               </div>
-              <div className="mt-1 text-xs text-[#666666]">{stat.detail}</div>
+              <div className="mt-1 text-[11px] leading-snug text-[#666666] sm:text-xs">{stat.detail}</div>
             </div>
           ))}
         </motion.div>

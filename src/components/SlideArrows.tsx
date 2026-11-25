@@ -31,11 +31,16 @@ export function SlideArrowButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      whileTap={{ scale: 0.94, x: sign * 3 }}
+      // Only real mouse pointers drive the hover wipe — touch devices emit emulated
+      // mouseenter events that would otherwise leave the button stuck in its dark state.
+      onPointerEnter={(e) => {
+        if (e.pointerType === 'mouse') setHovered(true);
+      }}
+      onPointerLeave={() => setHovered(false)}
+      onPointerCancel={() => setHovered(false)}
+      whileTap={disabled ? undefined : { scale: 0.92, x: sign * 3 }}
       aria-label={label ?? (isPrev ? 'Previous project slide' : 'Next project slide')}
-      className="group relative inline-flex h-12 cursor-pointer items-center gap-2.5 overflow-hidden rounded-full border border-[#D4D4D2] bg-white px-4 text-[#0A0A0A] shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-colors duration-300 hover:border-[#0A0A0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] disabled:cursor-not-allowed disabled:opacity-40 sm:h-13 sm:px-5"
+      className="group relative inline-flex min-h-[44px] min-w-[54px] shrink-0 cursor-pointer touch-manipulation select-none items-center justify-center gap-2.5 overflow-hidden rounded-full border border-[#D4D4D2] bg-white px-3.5 text-[#0A0A0A] shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-[color,background-color,border-color,box-shadow] duration-300 [-webkit-tap-highlight-color:transparent] hover:border-[#0A0A0A] active:border-[#0A0A0A] active:bg-[#F0F0EE] active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-[48px] sm:px-5"
     >
       {/* Kinetic Hover Fill Wipe */}
       <motion.span
@@ -69,7 +74,7 @@ export function SlideArrowButton({
       >
         {isPrev ? (
           <>
-            <svg viewBox="0 0 42 16" className="h-4 w-9 overflow-visible" fill="none" aria-hidden="true">
+            <svg viewBox="0 0 42 16" className="h-4 w-8 shrink-0 overflow-visible sm:w-9" fill="none" aria-hidden="true">
               {/* Echo ghost chevron trail */}
               <motion.path
                 d="M15 3.5L9.5 8L15 12.5"
@@ -116,7 +121,7 @@ export function SlideArrowButton({
             <span className="hidden font-mono text-[10.5px] tracking-[0.14em] uppercase sm:inline">
               Next
             </span>
-            <svg viewBox="0 0 42 16" className="h-4 w-9 overflow-visible" fill="none" aria-hidden="true">
+            <svg viewBox="0 0 42 16" className="h-4 w-8 shrink-0 overflow-visible sm:w-9" fill="none" aria-hidden="true">
               {/* Echo ghost chevron trail */}
               <motion.path
                 d="M27 3.5L32.5 8L27 12.5"
@@ -175,9 +180,9 @@ export function MiniArrowButton({ direction, onClick, label }: MiniArrowButtonPr
       type="button"
       onClick={onClick}
       whileHover={{ x: isPrev ? -2 : 2 }}
-      whileTap={{ scale: 0.9 }}
+      whileTap={{ scale: 0.88 }}
       aria-label={label}
-      className="grid h-8 w-8 cursor-pointer place-items-center rounded-full border border-[#E5E5E4] bg-white/95 text-[#0A0A0A] shadow-sm backdrop-blur transition-colors hover:border-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white"
+      className="grid h-10 w-10 shrink-0 cursor-pointer touch-manipulation select-none place-items-center rounded-full border border-[#E5E5E4] bg-white/95 text-[#0A0A0A] shadow-sm backdrop-blur transition-colors [-webkit-tap-highlight-color:transparent] hover:border-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white active:border-[#0A0A0A] active:bg-[#0A0A0A] active:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-1 sm:h-8 sm:w-8"
     >
       <svg viewBox="0 0 18 14" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
         {isPrev ? (

@@ -18,10 +18,10 @@ export function ArsenalSection() {
     <section
       id="stack"
       aria-labelledby="stack-heading"
-      className="scroll-mt-16 border-t border-[#E5E5E4] py-20 sm:py-28"
+      className="scroll-mt-20 border-t border-[#E5E5E4] py-14 sm:py-24"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="font-mono text-[11px] tracking-[0.16em] text-[#666666]">03 // CAPABILITIES</p>
             <div className="mt-3 overflow-hidden">

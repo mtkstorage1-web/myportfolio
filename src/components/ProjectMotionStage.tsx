@@ -18,6 +18,14 @@ type ExpandHandler = (triggerEl: HTMLElement) => void;
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
+/** The screenshot the visitor is looking at right now: fetch first, decode off-thread. */
+const PRIMARY_IMG = { loading: 'eager', fetchPriority: 'high', decoding: 'async' } as const;
+/** Background / peek previews: never compete with the primary frame. */
+const PEEK_IMG = { loading: 'lazy', fetchPriority: 'low', decoding: 'async' } as const;
+/** Intrinsic size hints (the parents already lock aspect-ratio, so CLS stays 0). */
+const LANDSCAPE_DIMS = { width: 1600, height: 900 } as const;
+const PORTRAIT_DIMS = { width: 900, height: 1950 } as const;
+
 /** Live `prefers-reduced-motion` that updates if the OS setting changes while mounted. */
 function useLiveReducedMotion(): boolean {
   const [reduced, setReduced] = useState(
@@ -176,7 +184,7 @@ function ModeToggle<T extends string>({
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(opt.id)}
             onKeyDown={(e) => handleTabArrows(e, ids, value, onChange, (id) => tabId(idBase, id))}
-            className={`relative cursor-pointer rounded-full px-2.5 py-1 font-mono text-[9.5px] tracking-[0.14em] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
+            className={`relative inline-flex min-h-[38px] cursor-pointer touch-manipulation items-center rounded-full px-3 py-1 font-mono text-[9.5px] tracking-[0.14em] whitespace-nowrap uppercase transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] sm:min-h-[26px] sm:px-2.5 ${
               active ? 'text-white' : 'text-[#666666] hover:text-[#0A0A0A]'
             }`}
           >
@@ -208,7 +216,7 @@ function FrameDots({
   onSelect: (index: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-0.5 sm:gap-1.5">
       {Array.from({ length: count }, (_, i) => (
         <button
           key={i}
@@ -216,7 +224,7 @@ function FrameDots({
           onClick={() => onSelect(i)}
           aria-label={`Show frame ${i + 1}`}
           aria-current={i === active}
-          className="grid h-4 cursor-pointer place-items-center rounded-full px-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2"
+          className="grid h-8 min-w-[20px] cursor-pointer touch-manipulation place-items-center rounded-full px-1 [-webkit-tap-highlight-color:transparent] focus-visible:ring-inset sm:h-4 sm:min-w-0 sm:px-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2"
         >
           <motion.span
             animate={{
@@ -271,7 +279,7 @@ function ExpandButton({ onClick }: { onClick: ExpandHandler }) {
       onClick={(e) => onClick(e.currentTarget)}
       whileTap={{ scale: 0.92 }}
       aria-label="Expand screenshot to fullscreen"
-      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[#E5E5E4] bg-white px-2.5 py-1 font-mono text-[9.5px] tracking-[0.14em] text-[#0A0A0A] uppercase transition-colors hover:border-[#0A0A0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]"
+      className="inline-flex min-h-[36px] cursor-pointer touch-manipulation items-center gap-1.5 rounded-full border border-[#E5E5E4] bg-white px-3 py-1 font-mono active:border-[#0A0A0A] sm:min-h-0 sm:px-2.5 text-[9.5px] tracking-[0.14em] text-[#0A0A0A] uppercase transition-colors hover:border-[#0A0A0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]"
     >
       <Maximize2 className="h-3 w-3" aria-hidden="true" />
       Expand
@@ -295,9 +303,9 @@ function CaptionBar({
   onExpand?: ExpandHandler;
 }) {
   return (
-    <div className="flex flex-col gap-2.5 border-t border-[#E5E5E4] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="shrink-0 font-mono text-[10px] tracking-[0.14em] text-[#0A0A0A]">
+    <div className="flex flex-col gap-2 border-t border-[#E5E5E4] px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2.5 sm:px-5 sm:py-3">
+      <div className="flex min-w-0 items-start gap-3 sm:items-center">
+        <span className="shrink-0 pt-px font-mono text-[10px] tracking-[0.14em] text-[#0A0A0A] sm:pt-0">
           {String(index + 1).padStart(2, '0')}
           <span className="text-[#666666]"> / {String(total).padStart(2, '0')}</span>
         </span>
@@ -309,7 +317,7 @@ function CaptionBar({
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -10, opacity: 0 }}
               transition={{ duration: 0.28, ease: EASE }}
-              className="truncate text-[12.5px] text-[#666666]"
+              className="line-clamp-2 text-[12px] leading-snug text-[#666666] sm:truncate sm:text-[12.5px] sm:leading-normal"
               title={caption}
             >
               {caption}
@@ -354,6 +362,8 @@ function ApogexStage({ project, onOpenLightbox }: StageProps) {
                   key={shot.src}
                   src={shot.src}
                   alt={shot.caption}
+                  {...PRIMARY_IMG}
+                  {...LANDSCAPE_DIMS}
                   draggable={false}
                   custom={dir}
                   variants={shotVariants}
@@ -383,7 +393,7 @@ function ApogexStage({ project, onOpenLightbox }: StageProps) {
               <path key={d} d={d} fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="0.6" />
             ))}
           </svg>
-          <div className="pointer-events-none absolute top-3 right-3 h-12 w-12 sm:h-14 sm:w-14" aria-hidden="true">
+          <div className="pointer-events-none absolute top-2 right-2 h-9 w-9 sm:top-3 sm:right-3 sm:h-14 sm:w-14" aria-hidden="true">
             <svg viewBox="0 0 56 56" className="animate-slow-spin h-full w-full">
               <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="0.8" strokeDasharray="2 4" />
               <circle cx="28" cy="6" r="2" fill={project.accent} />
@@ -394,16 +404,16 @@ function ApogexStage({ project, onOpenLightbox }: StageProps) {
               <line x1="20" y1="28" x2="36" y2="28" stroke="rgba(255,255,255,0.55)" strokeWidth="0.8" />
             </svg>
           </div>
-          <div className="pointer-events-none absolute top-3 left-3 rounded-full bg-black/45 px-2.5 py-1 font-mono text-[9px] tracking-[0.16em] text-white/85 uppercase backdrop-blur">
+          <div className="pointer-events-none absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 font-mono text-[9px] tracking-[0.12em] whitespace-nowrap text-white/85 uppercase backdrop-blur sm:top-3 sm:left-3 sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.16em]">
             CAM.{String(index + 1).padStart(2, '0')} · Forward+
           </div>
 
           {shots.length > 1 && (
             <>
-              <div className="absolute top-1/2 left-3 -translate-y-1/2">
+              <div className="absolute top-1/2 left-2 -translate-y-1/2 sm:left-3">
                 <MiniArrowButton direction="prev" onClick={() => go(-1)} label="Previous screenshot" />
               </div>
-              <div className="absolute top-1/2 right-3 -translate-y-1/2">
+              <div className="absolute top-1/2 right-2 -translate-y-1/2 sm:right-3">
                 <MiniArrowButton direction="next" onClick={() => go(1)} label="Next screenshot" />
               </div>
             </>
@@ -441,7 +451,7 @@ function FlowScopeStage({ project, onOpenLightbox }: StageProps) {
 
   return (
     <StageFrame project={project} label="iOS · SwiftUI Captures">
-      <div className="bg-draft-dots relative flex flex-1 items-center justify-center overflow-hidden px-4 py-6">
+      <div className="bg-draft-dots relative flex min-w-0 flex-1 items-center justify-center overflow-hidden px-3 py-6 sm:px-4">
         {/* Flanking peeks */}
         {prevShot && (
           <button
@@ -450,7 +460,7 @@ function FlowScopeStage({ project, onOpenLightbox }: StageProps) {
             aria-label="Previous screenshot"
             className="absolute top-1/2 left-[6%] hidden aspect-[9/19.5] w-[110px] -translate-y-1/2 cursor-pointer overflow-hidden rounded-[18px] border border-[#E5E5E4] bg-white opacity-40 blur-[1px] transition-opacity hover:opacity-70 sm:block lg:left-[4%] xl:left-[8%]"
           >
-            <img src={prevShot.src} alt="" draggable={false} className="h-full w-full object-cover" />
+            <img src={prevShot.src} alt="" {...PEEK_IMG} {...PORTRAIT_DIMS} draggable={false} className="h-full w-full object-cover" />
           </button>
         )}
         {nextShot && (
@@ -460,7 +470,7 @@ function FlowScopeStage({ project, onOpenLightbox }: StageProps) {
             aria-label="Next screenshot"
             className="absolute top-1/2 right-[6%] hidden aspect-[9/19.5] w-[110px] -translate-y-1/2 cursor-pointer overflow-hidden rounded-[18px] border border-[#E5E5E4] bg-white opacity-40 blur-[1px] transition-opacity hover:opacity-70 sm:block lg:right-[4%] xl:right-[8%]"
           >
-            <img src={nextShot.src} alt="" draggable={false} className="h-full w-full object-cover" />
+            <img src={nextShot.src} alt="" {...PEEK_IMG} {...PORTRAIT_DIMS} draggable={false} className="h-full w-full object-cover" />
           </button>
         )}
 
@@ -473,7 +483,7 @@ function FlowScopeStage({ project, onOpenLightbox }: StageProps) {
             className="relative"
           >
             <div
-              className="relative aspect-[9/19.5] w-[156px] overflow-hidden rounded-[28px] border-[5px] border-[#0A0A0A] bg-[#0A0A0A] shadow-[0_30px_60px_-30px_rgba(0,0,0,0.45)] sm:w-[172px]"
+              className="relative aspect-[9/19.5] h-[290px] w-auto overflow-hidden rounded-[26px] border-[5px] border-[#0A0A0A] bg-[#0A0A0A] shadow-[0_30px_60px_-30px_rgba(0,0,0,0.45)] sm:h-[360px] sm:rounded-[28px]"
             >
               <ShotHitArea onExpand={expand} caption={shot?.caption}>
                 <AnimatePresence initial={false} custom={dir}>
@@ -482,6 +492,8 @@ function FlowScopeStage({ project, onOpenLightbox }: StageProps) {
                       key={shot.src}
                       src={shot.src}
                       alt={shot.caption}
+                      {...PRIMARY_IMG}
+                      {...PORTRAIT_DIMS}
                       draggable={false}
                       custom={dir}
                       variants={shotVariants}
@@ -572,6 +584,7 @@ const gridItem: Variants = {
 };
 
 function AtlasMap({ accent }: { accent: string }) {
+  const prefersReducedMotion = useLiveReducedMotion();
   const cx = 200;
   const cy = 130;
   return (
@@ -583,8 +596,12 @@ function AtlasMap({ accent }: { accent: string }) {
           cy={y}
           r={1.4}
           fill="#0A0A0A"
-          animate={{ opacity: [0.15, 0.5, 0.15] }}
-          transition={{ duration: 3 + (i % 3), repeat: Infinity, delay: i * 0.3 }}
+          {...(prefersReducedMotion
+            ? { opacity: 0.3 }
+            : {
+                animate: { opacity: [0.15, 0.5, 0.15] },
+                transition: { duration: 3 + (i % 3), repeat: Infinity, delay: i * 0.3 },
+              })}
         />
       ))}
 
@@ -625,8 +642,21 @@ function AtlasMap({ accent }: { accent: string }) {
         />
       ))}
 
-      {/* Pulsing core rings */}
-      {[0, 1, 2].map((i) => (
+      {/* Pulsing core rings (static guide rings under reduced motion) */}
+      {prefersReducedMotion
+        ? [26, 36, 46].map((r) => (
+            <circle
+              key={`guide-${r}`}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={accent}
+              strokeWidth="0.8"
+              strokeOpacity={0.18}
+            />
+          ))
+        : [0, 1, 2].map((i) => (
         <motion.circle
           key={`pulse-${i}`}
           cx={cx}
@@ -638,13 +668,13 @@ function AtlasMap({ accent }: { accent: string }) {
           animate={{ r: [14, 46], opacity: [0.5, 0] }}
           transition={{ duration: 3, repeat: Infinity, delay: i, ease: 'easeOut' }}
         />
-      ))}
+          ))}
       <circle cx={cx} cy={cy} r={14} fill={accent} />
       <circle cx={cx} cy={cy} r={20} fill="none" stroke={accent} strokeOpacity={0.3} />
-      <text x={cx} y={cy + 3} textAnchor="middle" className="fill-white font-mono text-[7px] font-bold tracking-[0.1em]">
+      <text x={cx} y={cy + 3} textAnchor="middle" className="fill-white font-mono text-[8.5px] font-bold tracking-[0.06em] sm:text-[7px] sm:tracking-[0.1em]">
         CORE
       </text>
-      <text x={cx} y={cy + 34} textAnchor="middle" className="fill-[#0A0A0A] font-mono text-[7.5px] tracking-[0.18em]">
+      <text x={cx} y={cy + 34} textAnchor="middle" className="fill-[#0A0A0A] font-mono text-[9.5px] tracking-[0.14em] sm:text-[7.5px] sm:tracking-[0.18em]">
         ATLAS
       </text>
 
@@ -655,7 +685,7 @@ function AtlasMap({ accent }: { accent: string }) {
           <motion.g
             key={n.id}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1, y: [0, -4, 0] }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: [0, -4, 0] }}
             transition={{
               opacity: { duration: 0.4, delay: 0.5 + i * 0.12 },
               y: { duration: n.float, repeat: Infinity, ease: 'easeInOut' },
@@ -667,7 +697,7 @@ function AtlasMap({ accent }: { accent: string }) {
               x={n.x}
               y={labelBelow ? n.y - 15 : n.y + 21}
               textAnchor="middle"
-              className="fill-[#0A0A0A] font-mono text-[8px] tracking-[0.16em]"
+              className="fill-[#0A0A0A] font-mono text-[10.5px] tracking-[0.08em] sm:text-[8px] sm:tracking-[0.16em]"
             >
               {n.id}
             </text>
@@ -691,7 +721,7 @@ function AtlasGrid({ accent, soft }: { accent: string; soft: string }) {
           key={lab.name}
           variants={gridItem}
           whileHover={{ y: -3 }}
-          className="group relative overflow-hidden rounded-[14px] border border-[#E5E5E4] bg-white p-3 transition-colors hover:border-[#0A0A0A]"
+          className="group relative min-w-0 overflow-hidden rounded-[14px] border border-[#E5E5E4] bg-white p-3 transition-colors hover:border-[#0A0A0A]"
         >
           <div className="flex items-center justify-between">
             <span className="font-mono text-[9px] tracking-[0.16em] text-[#666666]">
@@ -704,7 +734,7 @@ function AtlasGrid({ accent, soft }: { accent: string; soft: string }) {
               {lab.code}
             </span>
           </div>
-          <div className="mt-5 flex h-6 items-end gap-[3px]" aria-hidden="true">
+          <div className="mt-4 flex h-6 items-end gap-[3px] sm:mt-5" aria-hidden="true">
             {[0, 1, 2, 3, 4, 5].map((b) => (
               <motion.span
                 key={b}
@@ -715,7 +745,7 @@ function AtlasGrid({ accent, soft }: { accent: string; soft: string }) {
               />
             ))}
           </div>
-          <p className="mt-2.5 font-display text-[13px] font-medium tracking-[-0.01em] text-[#0A0A0A]">
+          <p className="mt-2.5 font-display text-[12.5px] leading-tight font-medium tracking-[-0.01em] break-words text-[#0A0A0A] sm:text-[13px]">
             {lab.name}
           </p>
           <span className="mt-1 flex items-center gap-1.5 font-mono text-[8.5px] tracking-[0.14em] text-[#666666] uppercase">
@@ -766,7 +796,7 @@ function AtlasTree({ accent }: { accent: string }) {
                   transition={{ duration: 0.4, delay: 1 + bi * 0.12 + li * 0.08, ease: EASE }}
                 >
                   <circle cx={leafX} cy={ly} r={3.5} fill="white" stroke="#0A0A0A" strokeWidth="1.2" />
-                  <text x={leafX + 9} y={ly + 3} className="fill-[#666666] font-mono text-[8px] tracking-[0.12em]">
+                  <text x={leafX + 8} y={ly + 3.5} className="fill-[#666666] font-mono text-[10.5px] tracking-[0.04em] sm:text-[8px] sm:tracking-[0.12em]">
                     {leaf.toUpperCase()}
                   </text>
                 </motion.g>
@@ -780,7 +810,7 @@ function AtlasTree({ accent }: { accent: string }) {
             style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
           >
             <rect x={midX - 30} y={branch.y - 10} width={60} height={20} rx={10} fill="white" stroke={accent} strokeWidth="1.2" />
-            <text x={midX} y={branch.y + 3} textAnchor="middle" className="fill-[#0A0A0A] font-mono text-[8px] tracking-[0.14em]">
+            <text x={midX} y={branch.y + 3.5} textAnchor="middle" className="fill-[#0A0A0A] font-mono text-[9.5px] tracking-[0.04em] sm:text-[8px] sm:tracking-[0.14em]">
               {branch.label.toUpperCase()}
             </text>
           </motion.g>
@@ -793,7 +823,7 @@ function AtlasTree({ accent }: { accent: string }) {
         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
       >
         <circle cx={rootX} cy={rootY} r={18} fill={accent} />
-        <text x={rootX} y={rootY + 3} textAnchor="middle" className="fill-white font-mono text-[7.5px] font-bold tracking-[0.1em]">
+        <text x={rootX} y={rootY + 3} textAnchor="middle" className="fill-white font-mono text-[9px] font-bold tracking-[0.06em] sm:text-[7.5px] sm:tracking-[0.1em]">
           ROOT
         </text>
       </motion.g>
@@ -828,7 +858,7 @@ function KnowledgeExplorerStage({ project }: StageProps) {
         id={panelId(idBase)}
         role="tabpanel"
         aria-labelledby={tabId(idBase, mode)}
-        className="bg-draft-dots flex flex-1 items-center justify-center p-4 sm:p-6"
+        className="bg-draft-dots flex flex-1 items-center justify-center p-3 sm:p-6"
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -918,11 +948,11 @@ function AgentWidgetStage({ project }: StageProps) {
         id={panelId(idBase)}
         role="tabpanel"
         aria-labelledby={tabId(idBase, mode)}
-        className="bg-draft-dots relative flex flex-1 items-start justify-center overflow-hidden p-5 sm:items-center sm:p-8"
+        className="bg-draft-dots relative flex flex-1 items-start justify-center overflow-hidden p-3.5 sm:items-center sm:p-8"
       >
         {/* Faux desktop menu bar */}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex h-6 items-center justify-between border-b border-[#E5E5E4] bg-white/80 px-4 font-mono text-[9px] tracking-[0.12em] text-[#666666] backdrop-blur">
-          <span>Finder · File · Edit</span>
+          <span className="truncate">Finder · File · Edit</span>
           <span className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-[#0A0A0A]" />
             AGENT
@@ -934,7 +964,7 @@ function AgentWidgetStage({ project }: StageProps) {
           transition={{ layout: { type: 'spring', stiffness: 260, damping: 28 } }}
           style={{ borderRadius: mode === 'compact' ? 999 : 20 }}
           className={`relative mt-8 overflow-hidden bg-[#0A0A0A] text-white shadow-[0_30px_60px_-28px_rgba(0,0,0,0.55)] ring-1 ring-white/10 sm:mt-4 ${
-            mode === 'compact' ? 'px-4 py-2.5' : 'w-full max-w-[340px] p-4'
+            mode === 'compact' ? 'max-w-full px-3.5 py-2.5 sm:px-4' : 'w-full max-w-[340px] p-3.5 sm:p-4'
           }`}
         >
           {mode === 'compact' ? (
@@ -944,7 +974,7 @@ function AgentWidgetStage({ project }: StageProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3, delay: 0.1 }}
-              className="flex items-center gap-3 font-mono text-[10px] tracking-[0.08em] whitespace-nowrap"
+              className="flex items-center gap-2 font-mono text-[10px] tracking-[0.06em] whitespace-nowrap sm:gap-3 sm:tracking-[0.08em]"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-[#22C55E] animate-pulse-soft" />
               <span>CPU 24%</span>
@@ -964,13 +994,13 @@ function AgentWidgetStage({ project }: StageProps) {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3, delay: 0.12 }}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
                   <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
                   <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
                 </div>
-                <span className="rounded-md border border-white/20 px-1.5 py-0.5 font-mono text-[9px] tracking-[0.1em] text-white/75">
+                <span className="shrink-0 rounded-md border border-white/20 px-1.5 py-0.5 font-mono text-[9px] tracking-[0.06em] whitespace-nowrap text-white/75 sm:tracking-[0.1em]">
                   Ctrl+Opt+M
                 </span>
               </div>
@@ -979,8 +1009,8 @@ function AgentWidgetStage({ project }: StageProps) {
               <div className="mt-2 space-y-2.5">
                 {QUOTAS.map((q, i) => (
                   <div key={q.label}>
-                    <div className="flex items-center justify-between font-mono text-[9.5px] tracking-[0.12em]">
-                      <span className="text-white/80">{q.label}</span>
+                    <div className="flex items-center justify-between gap-2 font-mono text-[9.5px] tracking-[0.08em] sm:tracking-[0.12em]">
+                      <span className="min-w-0 truncate text-white/80">{q.label}</span>
                       <span className="text-white/55">{q.pct}%</span>
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
@@ -995,12 +1025,12 @@ function AgentWidgetStage({ project }: StageProps) {
                 ))}
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-2.5">
                 {[
                   { label: 'CPU', value: '24%', values: cpu },
                   { label: 'GPU', value: '18%', values: gpu },
                 ].map((s) => (
-                  <div key={s.label} className="rounded-[12px] border border-white/10 bg-white/[0.04] p-2.5">
+                  <div key={s.label} className="min-w-0 rounded-[12px] border border-white/10 bg-white/[0.04] p-2 sm:p-2.5">
                     <div className="flex items-center justify-between font-mono text-[9px] tracking-[0.14em]">
                       <span className="text-white/50">{s.label}</span>
                       <span>{s.value}</span>
@@ -1021,12 +1051,12 @@ function AgentWidgetStage({ project }: StageProps) {
                 ))}
               </div>
 
-              <div className="mt-2.5 grid grid-cols-2 gap-2.5 font-mono text-[9.5px] tracking-[0.12em]">
-                <div className="flex items-center justify-between rounded-[10px] border border-white/10 px-2.5 py-2">
+              <div className="mt-2 grid grid-cols-2 gap-2 font-mono text-[9.5px] tracking-[0.08em] sm:mt-2.5 sm:gap-2.5 sm:tracking-[0.12em]">
+                <div className="flex min-w-0 items-center justify-between gap-1 rounded-[10px] border border-white/10 px-2 py-2 sm:px-2.5">
                   <span className="text-white/50">DIE</span>
                   <span>49°C</span>
                 </div>
-                <div className="flex items-center justify-between rounded-[10px] border border-white/10 px-2.5 py-2">
+                <div className="flex min-w-0 items-center justify-between gap-1 rounded-[10px] border border-white/10 px-2 py-2 sm:px-2.5">
                   <span className="text-white/50">SSD</span>
                   <span>38°C</span>
                 </div>
@@ -1072,23 +1102,23 @@ function MindBenchStage({ project }: StageProps) {
 
   return (
     <StageFrame project={project} label="C++ · Terminal Session">
-      <div className="flex flex-1 flex-col gap-4 p-4 sm:p-5">
-        <div className="relative flex-1 overflow-hidden rounded-[16px] bg-[#0A0A0A] p-4 font-mono text-[11px] leading-relaxed text-[#E5E5E4] sm:p-5 sm:text-[12px]">
+      <div className="flex min-w-0 flex-1 flex-col gap-3.5 p-3 sm:gap-4 sm:p-5">
+        <div className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden rounded-[16px] bg-[#0A0A0A] p-3.5 font-mono text-[10px] leading-relaxed text-[#E5E5E4] sm:overflow-hidden sm:p-5 sm:text-[12px]">
           <CornerTicks tone="#3A3A3A" />
-          <div className="mb-3 flex items-center justify-between text-[9px] tracking-[0.16em] text-white/40 uppercase">
+          <div className="mb-3 flex items-center justify-between gap-2 text-[9px] tracking-[0.12em] whitespace-nowrap text-[#A3A3A3] uppercase sm:tracking-[0.16em]">
             <span>tty0 · mindbench</span>
             <span style={{ color: project.accent }}>● Offline</span>
           </div>
           <motion.div variants={termContainer} initial="hidden" animate="show" className="space-y-1">
             {TERMINAL_LINES.map((line) => (
-              <motion.p key={line.text} variants={termLine} className="truncate">
+              <motion.p key={line.text} variants={termLine} className="break-words sm:truncate">
                 <span className={line.prompt === '$' ? 'text-white/40' : ''} style={line.prompt === 'ok' ? { color: project.accent } : undefined}>
                   {line.prompt === '$' ? '$' : '[ok]'}
                 </span>{' '}
                 {line.text}
               </motion.p>
             ))}
-            <motion.p variants={termLine} className="truncate">
+            <motion.p variants={termLine} className="break-words sm:truncate">
               <span className="text-white/40">&gt;</span> brain.tier ={' '}
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
@@ -1118,7 +1148,7 @@ function MindBenchStage({ project }: StageProps) {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 1.1 + i * 0.05, duration: 0.3, ease: EASE }}
-                className="rounded-full border border-white/15 px-2 py-0.5 text-[9px] tracking-[0.1em] text-white/70 uppercase"
+                className="rounded-full border border-white/15 px-2 py-0.5 text-[8.5px] tracking-[0.08em] whitespace-nowrap text-white/70 uppercase sm:text-[9px] sm:tracking-[0.1em]"
               >
                 {g}
               </motion.span>
@@ -1128,12 +1158,12 @@ function MindBenchStage({ project }: StageProps) {
 
         {/* Brain tier stepper */}
         <div>
-          <div className="flex items-center justify-between font-mono text-[9.5px] tracking-[0.16em] text-[#666666] uppercase">
-            <span>Brain Upgrade Path</span>
+          <div className="flex items-center justify-between gap-2 font-mono text-[9.5px] tracking-[0.12em] text-[#666666] uppercase sm:tracking-[0.16em]">
+            <span className="min-w-0">Brain Upgrade Path</span>
             <button
               type="button"
               onClick={() => setTier((t) => (t + 1) % BRAIN_TIERS.length)}
-              className="cursor-pointer rounded-full border border-[#E5E5E4] px-2 py-0.5 text-[#0A0A0A] transition-colors hover:border-[#0A0A0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]"
+              className="inline-flex min-h-[36px] shrink-0 cursor-pointer touch-manipulation items-center rounded-full border border-[#E5E5E4] px-3 py-0.5 text-[#0A0A0A] transition-colors [-webkit-tap-highlight-color:transparent] hover:border-[#0A0A0A] active:border-[#0A0A0A] active:bg-[#F3F3F2] sm:min-h-0 sm:px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]"
             >
               Upgrade →
             </button>
@@ -1146,7 +1176,7 @@ function MindBenchStage({ project }: StageProps) {
               style={{ backgroundColor: project.accent }}
             />
           </div>
-          <div className="mt-2.5 grid grid-cols-5 gap-1" role="group" aria-label="Brain tier" data-arrow-keys="">
+          <div className="mt-2.5 grid grid-cols-3 gap-1.5 sm:grid-cols-5 sm:gap-1" role="group" aria-label="Brain tier" data-arrow-keys="">
             {BRAIN_TIERS.map((t, i) => (
               <button
                 key={t}
@@ -1162,7 +1192,7 @@ function MindBenchStage({ project }: StageProps) {
                   if (sibling instanceof HTMLElement) sibling.focus();
                 }}
                 aria-pressed={i === tier}
-                className={`cursor-pointer truncate rounded-md px-1 py-1 text-center font-mono text-[8.5px] tracking-[0.06em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] sm:text-[9.5px] ${
+                className={`inline-flex min-h-[40px] cursor-pointer touch-manipulation items-center justify-center rounded-md border border-[#EDEDEC] px-1 py-1 text-center font-mono text-[9.5px] leading-tight tracking-[0.04em] transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] sm:block sm:min-h-0 sm:truncate sm:border-transparent sm:tracking-[0.06em] ${
                   i <= tier ? 'text-[#0A0A0A]' : 'text-[#666666] hover:text-[#0A0A0A]'
                 }`}
                 style={i === tier ? { backgroundColor: project.accentSoft } : undefined}
@@ -1182,19 +1212,89 @@ function MindBenchStage({ project }: StageProps) {
 /* -------------------------------------------------------------------------- */
 
 const BRIDGE_PATH = 'M4 50 C40 50 50 20 90 20 S140 50 176 50';
+/** Vertical S-curve used when the stage stacks Browser → bridge → iOS on phones. */
+const BRIDGE_PATH_V = 'M35 4 C35 30 12 40 12 60 S35 90 35 116';
+
+type Pt = readonly [number, number];
+
+/**
+ * Animated data bridge between the web card and the iOS frame. Under reduced
+ * motion the travelling packets become static markers at each curve
+ * segment's midpoint and the draw-on is skipped.
+ */
+function SignalBridge({
+  path,
+  viewBox,
+  start,
+  end,
+  mids,
+  accent,
+  reduced,
+  className,
+}: {
+  path: string;
+  viewBox: string;
+  start: Pt;
+  end: Pt;
+  mids: readonly [Pt, Pt];
+  accent: string;
+  reduced: boolean;
+  className?: string;
+}) {
+  return (
+    <svg viewBox={viewBox} className={className}>
+      <path d={path} fill="none" stroke="#D4D4D2" strokeWidth="1.4" strokeDasharray="4 5" />
+      <motion.path
+        d={path}
+        fill="none"
+        stroke={accent}
+        strokeWidth="1.6"
+        initial={reduced ? false : { pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={reduced ? { duration: 0 } : { duration: 1.1, delay: 0.4, ease: EASE }}
+        strokeOpacity={0.35}
+      />
+      {reduced ? (
+        <g key="static">
+          <circle cx={mids[0][0]} cy={mids[0][1]} r="4" fill={accent} />
+          <circle cx={mids[1][0]} cy={mids[1][1]} r="2.5" fill="#0A0A0A" />
+        </g>
+      ) : (
+        <g key="animated">
+          <circle r="4" fill={accent}>
+            <animateMotion dur="2.2s" repeatCount="indefinite" path={path} />
+          </circle>
+          <circle r="2.5" fill="#0A0A0A">
+            <animateMotion
+              dur="2.2s"
+              begin="1.1s"
+              repeatCount="indefinite"
+              path={path}
+              keyPoints="1;0"
+              keyTimes="0;1"
+              calcMode="linear"
+            />
+          </circle>
+        </g>
+      )}
+      <circle cx={start[0]} cy={start[1]} r="3" fill="white" stroke="#0A0A0A" strokeWidth="1.2" />
+      <circle cx={end[0]} cy={end[1]} r="3" fill="white" stroke="#0A0A0A" strokeWidth="1.2" />
+    </svg>
+  );
+}
 
 function GGPartnerStage({ project }: StageProps) {
   const prefersReducedMotion = useLiveReducedMotion();
   return (
     <StageFrame project={project} label="Web → iOS Bridge">
       <div className="bg-draft-dots flex flex-1 items-center justify-center p-4 sm:p-6">
-        <div className="flex w-full max-w-[560px] items-center">
+        <div className="flex w-full max-w-[560px] flex-col items-center sm:flex-row">
           {/* Browser card */}
           <motion.div
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, ease: EASE }}
-            className="min-w-0 flex-1 overflow-hidden rounded-[14px] border border-[#E5E5E4] bg-white shadow-[0_20px_40px_-28px_rgba(0,0,0,0.3)]"
+            className="w-full max-w-[300px] min-w-0 overflow-hidden rounded-[14px] sm:max-w-none sm:flex-1 border border-[#E5E5E4] bg-white shadow-[0_20px_40px_-28px_rgba(0,0,0,0.3)]"
           >
             <div className="flex items-center gap-2 border-b border-[#E5E5E4] px-3 py-2">
               <div className="flex gap-1">
@@ -1241,47 +1341,36 @@ function GGPartnerStage({ project }: StageProps) {
             </div>
           </motion.div>
 
-          {/* Signal bridge */}
-          <div className="w-[64px] shrink-0 sm:w-[110px]" aria-hidden="true">
-            <svg viewBox="0 0 180 70" className="w-full overflow-visible">
-              <path d={BRIDGE_PATH} fill="none" stroke="#D4D4D2" strokeWidth="1.4" strokeDasharray="4 5" />
-              <motion.path
-                d={BRIDGE_PATH}
-                fill="none"
-                stroke={project.accent}
-                strokeWidth="1.6"
-                initial={prefersReducedMotion ? false : { pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={prefersReducedMotion ? { duration: 0 } : { duration: 1.1, delay: 0.4, ease: EASE }}
-                strokeOpacity={0.35}
-              />
-              {prefersReducedMotion ? (
-                <g key="static">
-                  {/* Static signal markers at each curve segment's midpoint */}
-                  <circle cx="45.5" cy="35" r="4" fill={project.accent} />
-                  <circle cx="134.5" cy="35" r="2.5" fill="#0A0A0A" />
-                </g>
-              ) : (
-                <g key="animated">
-                  <circle r="4" fill={project.accent}>
-                    <animateMotion dur="2.2s" repeatCount="indefinite" path={BRIDGE_PATH} />
-                  </circle>
-                  <circle r="2.5" fill="#0A0A0A">
-                    <animateMotion
-                      dur="2.2s"
-                      begin="1.1s"
-                      repeatCount="indefinite"
-                      path={BRIDGE_PATH}
-                      keyPoints="1;0"
-                      keyTimes="0;1"
-                      calcMode="linear"
-                    />
-                  </circle>
-                </g>
-              )}
-              <circle cx="4" cy="50" r="3" fill="white" stroke="#0A0A0A" strokeWidth="1.2" />
-              <circle cx="176" cy="50" r="3" fill="white" stroke="#0A0A0A" strokeWidth="1.2" />
-            </svg>
+          {/* Signal bridge — vertical on phones, horizontal from sm up */}
+          <div className="h-[64px] w-[56px] shrink-0 sm:hidden" aria-hidden="true">
+            <SignalBridge
+              path={BRIDGE_PATH_V}
+              viewBox="0 0 70 120"
+              start={[35, 4]}
+              end={[35, 116]}
+              mids={[
+                [23.5, 34.25],
+                [23.5, 85.75],
+              ]}
+              accent={project.accent}
+              reduced={prefersReducedMotion}
+              className="h-full w-full overflow-visible"
+            />
+          </div>
+          <div className="hidden w-[110px] shrink-0 sm:block" aria-hidden="true">
+            <SignalBridge
+              path={BRIDGE_PATH}
+              viewBox="0 0 180 70"
+              start={[4, 50]}
+              end={[176, 50]}
+              mids={[
+                [45.5, 35],
+                [134.5, 35],
+              ]}
+              accent={project.accent}
+              reduced={prefersReducedMotion}
+              className="w-full overflow-visible"
+            />
           </div>
 
           {/* iOS frame */}
@@ -1349,6 +1438,12 @@ const TRACES = [
 /** Keyboard order for arrow navigation across the schematic's clickable nodes. */
 const SCHEMATIC_ORDER = ['sensor', 'uno', 'actuator', 'enclosure'] as const;
 
+/** "Fingerprint Sensor" -> ["Fingerprint", "Sensor"]; "Arduino Uno R3" -> ["Arduino", "Uno R3"]. */
+function splitLabel(label: string): string[] {
+  const i = label.indexOf(' ');
+  return i < 0 ? [label] : [label.slice(0, i), label.slice(i + 1)];
+}
+
 function ArduinoLockStage({ project }: StageProps) {
   const [selected, setSelected] = useState<string>(HARDWARE_NODES[1]?.id ?? 'uno');
   const node = HARDWARE_NODES.find((n) => n.id === selected) ?? HARDWARE_NODES[0];
@@ -1383,7 +1478,7 @@ function ArduinoLockStage({ project }: StageProps) {
   return (
     <StageFrame project={project} label="Wiring Schematic · Rev A">
       <div className="flex flex-1 flex-col">
-        <div className="flex flex-1 items-center justify-center bg-[#FAFAFA] p-3 sm:p-5">
+        <div className="flex min-w-0 flex-1 items-center justify-center bg-[#FAFAFA] p-2 sm:p-5">
           <svg
             viewBox="0 0 440 240"
             className="h-full max-h-[300px] w-full"
@@ -1433,7 +1528,7 @@ function ArduinoLockStage({ project }: StageProps) {
                 strokeDasharray="6 5"
               />
               <rect x="20" y="208" width="128" height="16" rx="8" fill={enclosureActive ? accent : '#0A0A0A'} />
-              <text x="84" y="219" textAnchor="middle" className="fill-white font-mono text-[7.5px] tracking-[0.14em]">
+              <text x="84" y="219.5" textAnchor="middle" className="fill-white font-mono text-[8.5px] tracking-[0.08em] sm:text-[7.5px] sm:tracking-[0.14em]">
                 PLASTIC ENCLOSURE
               </text>
             </g>
@@ -1450,7 +1545,7 @@ function ArduinoLockStage({ project }: StageProps) {
                   animate={{ pathLength: 1 }}
                   transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.8, delay: 0.2 + i * 0.12, ease: EASE }}
                 />
-                <text x={t.lx} y={t.ly} className="fill-[#666666] font-mono text-[6.5px] tracking-[0.1em]">
+                <text x={t.lx} y={t.ly} className="fill-[#666666] font-mono text-[7.5px] tracking-[0.04em] sm:text-[6.5px] sm:tracking-[0.1em]">
                   {t.label}
                 </text>
                 {t.id !== 'led' &&
@@ -1468,7 +1563,7 @@ function ArduinoLockStage({ project }: StageProps) {
             <g>
               <circle cx="344" cy="196" r="5" fill="#22C55E" className={prefersReducedMotion ? undefined : 'animate-pulse-soft'} />
               <circle cx="362" cy="196" r="5" fill="#EF4444" opacity="0.35" />
-              <text x="372" y="199" className="fill-[#666666] font-mono text-[6.5px] tracking-[0.1em]">
+              <text x="372" y="199" className="fill-[#666666] font-mono text-[7px] tracking-[0.02em] sm:text-[6.5px] sm:tracking-[0.1em]">
                 GRANT / DENY
               </text>
             </g>
@@ -1513,18 +1608,29 @@ function ArduinoLockStage({ project }: StageProps) {
                     }}
                     transition={{ duration: 0.25 }}
                   />
-                  <text x={box.x + 10} y={box.y + 16} className="fill-[#666666] font-mono text-[6.5px] tracking-[0.16em]">
+                  <text x={box.x + 10} y={box.y + 16} className="fill-[#666666] font-mono text-[8px] tracking-[0.1em] sm:text-[6.5px] sm:tracking-[0.16em]">
                     {box.code}
                   </text>
-                  <text x={box.x + 10} y={box.y + 32} className="fill-[#0A0A0A] font-display text-[10px] font-semibold">
+                  {/* Desktop: one line. Phones (SVG scaled to ~65%): two larger lines. */}
+                  <text x={box.x + 10} y={box.y + 32} className="hidden fill-[#0A0A0A] font-display text-[10px] font-semibold sm:inline">
                     {hw?.label ?? id}
+                  </text>
+                  <text x={box.x + 10} y={box.y + 31} className="fill-[#0A0A0A] font-display text-[12.5px] font-semibold sm:hidden">
+                    {splitLabel(hw?.label ?? id).map((line, li) => (
+                      <tspan key={line} x={box.x + 10} dy={li === 0 ? 0 : 13}>
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
                   {id === 'uno' && (
                     <>
                       {Array.from({ length: 8 }, (_, p) => (
                         <rect key={p} x={box.x + 12 + p * 12} y={box.y + box.h - 14} width="6" height="6" rx="1" fill={active ? accent : '#D4D4D2'} />
                       ))}
-                      <text x={box.x + 10} y={box.y + 48} className="fill-[#666666] font-mono text-[6.5px] tracking-[0.1em]">
+                      <text x={box.x + 10} y={box.y + 48} className="hidden fill-[#666666] font-mono text-[6.5px] tracking-[0.1em] sm:inline">
+                        ATmega328P · 5V
+                      </text>
+                      <text x={box.x + 10} y={box.y + 62} className="fill-[#666666] font-mono text-[7.5px] tracking-[0.04em] sm:hidden">
                         ATmega328P · 5V
                       </text>
                     </>
@@ -1542,8 +1648,8 @@ function ArduinoLockStage({ project }: StageProps) {
         </div>
 
         {/* Module pills + inspector callout */}
-        <div className="border-t border-[#E5E5E4] px-4 py-3 sm:px-5">
-          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Hardware modules">
+        <div className="border-t border-[#E5E5E4] px-3 py-3 sm:px-5">
+          <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap" role="tablist" aria-label="Hardware modules">
             {HARDWARE_NODES.map((n) => {
               const active = n.id === selected;
               return (
@@ -1557,11 +1663,14 @@ function ArduinoLockStage({ project }: StageProps) {
                   tabIndex={active ? 0 : -1}
                   onClick={() => setSelected(n.id)}
                   onKeyDown={(e) => handleTabArrows(e, hwIds, selected, setSelected, (id) => tabId(idBase, id))}
-                  className={`relative cursor-pointer rounded-full border px-2.5 py-1 font-mono text-[9.5px] tracking-[0.1em] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
-                    active ? 'text-white' : 'border-[#E5E5E4] text-[#666666] hover:border-[#0A0A0A] hover:text-[#0A0A0A]'
+                  className={`relative inline-flex min-h-[44px] cursor-pointer touch-manipulation items-center justify-center rounded-full border px-2.5 py-1 text-center font-mono text-[9.5px] leading-tight tracking-[0.08em] uppercase transition-colors [-webkit-tap-highlight-color:transparent] sm:min-h-0 sm:tracking-[0.1em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
+                    active ? 'gap-1.5 bg-white text-[#0A0A0A]' : 'border-[#E5E5E4] text-[#666666] hover:border-[#0A0A0A] hover:text-[#0A0A0A]'
                   }`}
-                  style={active ? { backgroundColor: accent, borderColor: accent } : undefined}
+                  style={active ? { borderColor: accent, boxShadow: `inset 0 0 0 1px ${accent}` } : undefined}
                 >
+                  {active && (
+                    <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: accent }} />
+                  )}
                   {n.label}
                 </button>
               );
@@ -1580,9 +1689,9 @@ function ArduinoLockStage({ project }: StageProps) {
                   style={{ borderLeftColor: accent }}
                   aria-live="polite"
                 >
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                     <span className="font-display text-[13px] font-semibold text-[#0A0A0A]">{node.shortRole}</span>
-                    <span className="font-mono text-[9.5px] tracking-[0.06em]" style={{ color: accent }}>
+                    <span className="min-w-0 font-mono text-[9.5px] leading-snug tracking-[0.04em] break-words sm:tracking-[0.06em]" style={{ color: accent }}>
                       {node.pinInfo}
                     </span>
                   </div>

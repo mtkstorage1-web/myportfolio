@@ -6,14 +6,18 @@ import type {
 } from 'react';
 import { AnimatePresence, motion, useInView, useIsPresent } from 'motion/react';
 import type { PanInfo, Variants } from 'motion/react';
-import { ArrowUpRight, Keyboard, WifiOff, X } from 'lucide-react';
+import { ArrowUpRight, Hand, Keyboard, WifiOff, X } from 'lucide-react';
 import { PROJECTS } from '../data/portfolioData';
 import type { ProjectCategory, ProjectItem, ProjectScreenshot } from '../data/portfolioData';
 import { ProjectMotionStage } from './ProjectMotionStage';
 import { SlideArrowButton } from './SlideArrows';
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-const SWIPE_THRESHOLD = 70;
+/** Horizontal swipe distance (px) that pages a slide: touch is lighter than mouse. */
+const SWIPE_THRESHOLD_MOUSE = 70;
+const SWIPE_THRESHOLD_TOUCH = 52;
+const swipeThreshold = (pointerType: string | undefined) =>
+  pointerType === 'mouse' ? SWIPE_THRESHOLD_MOUSE : SWIPE_THRESHOLD_TOUCH;
 
 const FILTERS: Array<{ id: ProjectCategory; label: string }> = [
   { id: 'all', label: 'All' },
@@ -45,6 +49,39 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
 const shortTitle = (project: ProjectItem) =>
   project.id === 'arduino-lock' ? 'Biometric Lock' : project.title;
+
+function prefersReducedMotionNow() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Live `prefers-reduced-motion` that updates if the OS setting changes while mounted. */
+function useLiveReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(prefersReducedMotionNow);
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReduced(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
+
+/**
+ * Scroll `el` to the horizontal centre of its own scroll `container` only.
+ * Never uses element.scrollIntoView, which can also scroll the page vertically.
+ */
+function centerInRail(container: HTMLElement | null, el: HTMLElement | null, smooth = true) {
+  if (!container || !el || container.scrollWidth <= container.clientWidth) return;
+  const c = container.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const left = container.scrollLeft + (r.left - c.left) - (c.width - r.width) / 2;
+  const max = container.scrollWidth - container.clientWidth;
+  container.scrollTo({
+    left: Math.max(0, Math.min(max, left)),
+    behavior: smooth && !prefersReducedMotionNow() ? 'smooth' : 'auto',
+  });
+}
 
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -87,6 +124,12 @@ const stageVariants: Variants = {
     scale: 1,
     transition: { duration: 0.8, ease: EASE },
   },
+};
+
+/** Reduced motion: no clip-path wipe / slide / scale — just a short fade. */
+const reducedStageVariants: Variants = {
+  enter: { opacity: 0 },
+  center: { opacity: 1, transition: { duration: 0.18, ease: 'linear' } },
 };
 
 const infoVariants: Variants = {
@@ -179,6 +222,9 @@ function Lightbox({
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const swipeStartRef = useRef<{ id: number; x: number; y: number; type: string } | null>(null);
+  const activePointersRef = useRef<Set<number>>(new Set());
+  const swipedRef = useRef(false);
   const shot = state.shots[state.index];
   const portrait = shot?.aspect === 'portrait';
   const multi = state.shots.length > 1;
@@ -226,6 +272,46 @@ function Lightbox({
 
   if (!shot) return null;
 
+  // Horizontal touch / mouse swipe flips screenshots. Tracked with native
+  // pointer events so the click that follows a mouse drag can be swallowed
+  // synchronously (it would otherwise hit the backdrop and close the viewer).
+  const onSwipeDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // A primary pointer starts a fresh gesture, so a missed pointerup can't wedge the set.
+    if (e.isPrimary) activePointersRef.current.clear();
+    activePointersRef.current.add(e.pointerId);
+    if (activePointersRef.current.size > 1) {
+      // Second finger down = pinch-zoom, never a photo flip.
+      swipeStartRef.current = null;
+      return;
+    }
+    swipeStartRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, type: e.pointerType };
+    swipedRef.current = false;
+  };
+  const onSwipeMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    if (!start || swipedRef.current || e.pointerId !== start.id) return;
+    const dx = Math.abs(e.clientX - start.x);
+    if (dx > DRAG_INTENT_PX && dx > Math.abs(e.clientY - start.y)) swipedRef.current = true;
+  };
+  const onSwipeEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
+    activePointersRef.current.delete(e.pointerId);
+    const start = swipeStartRef.current;
+    if (!start || e.pointerId !== start.id) return;
+    swipeStartRef.current = null;
+    if (!multi || activePointersRef.current.size !== 0) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (Math.abs(dx) < Math.abs(dy)) return;
+    if (dx <= -swipeThreshold(start.type)) onStep(1);
+    else if (dx >= swipeThreshold(start.type)) onStep(-1);
+  };
+  const onSwipeClickCapture = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (e.detail === 0 || !swipedRef.current) return;
+    swipedRef.current = false;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
     <motion.div
       ref={dialogRef}
@@ -236,25 +322,38 @@ function Lightbox({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
-      className="fixed inset-0 z-[100] flex flex-col bg-[#FAFAFA]/95 backdrop-blur-md"
+      className="fixed inset-0 z-[100] flex h-[100dvh] flex-col overscroll-contain bg-[#FAFAFA]/95 backdrop-blur-md"
       onClick={onClose}
+      onPointerDown={onSwipeDown}
+      onPointerMove={onSwipeMove}
+      onPointerUp={onSwipeEnd}
+      onPointerCancel={(e) => {
+        activePointersRef.current.delete(e.pointerId);
+        swipeStartRef.current = null;
+      }}
+      onClickCapture={onSwipeClickCapture}
+      style={{ touchAction: 'pan-y pinch-zoom' }}
     >
-      <div className="flex items-center justify-between px-4 py-4 sm:px-8" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex items-center justify-between gap-3 px-[max(1rem,env(safe-area-inset-left))] pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:px-8 sm:pb-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <span className="font-mono text-[11px] tracking-[0.16em] text-[#666666] uppercase">
           Frame {pad(state.index + 1)} / {pad(state.shots.length)}
+          {multi && <span className="ml-2 sm:hidden">· Swipe</span>}
         </span>
         <button
           ref={closeRef}
           type="button"
           onClick={onClose}
           aria-label="Close screenshot viewer"
-          className="grid h-10 w-10 cursor-pointer place-items-center rounded-full border border-[#D4D4D2] bg-white text-[#0A0A0A] transition-colors hover:border-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]"
+          className="grid min-h-[44px] min-w-[44px] shrink-0 cursor-pointer touch-manipulation place-items-center rounded-full border border-[#D4D4D2] bg-white text-[#0A0A0A] transition-colors [-webkit-tap-highlight-color:transparent] hover:border-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white active:bg-[#0A0A0A] active:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-4 sm:px-20">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-3 sm:px-20">
         <AnimatePresence initial={false} custom={state.dir} mode="popLayout">
           <motion.img
             key={shot.src}
@@ -272,7 +371,8 @@ function Lightbox({
             transition={{ duration: 0.45, ease: EASE }}
             onClick={(e) => e.stopPropagation()}
             draggable={false}
-            className={`max-h-full rounded-[18px] border border-[#E5E5E4] bg-white object-contain shadow-[0_40px_80px_-40px_rgba(0,0,0,0.35)] ${
+            decoding="async"
+            className={`max-h-full rounded-[14px] select-none sm:rounded-[18px] border border-[#E5E5E4] bg-white object-contain shadow-[0_40px_80px_-40px_rgba(0,0,0,0.35)] ${
               portrait ? 'max-w-[min(420px,90vw)]' : 'max-w-[min(1200px,100%)]'
             }`}
           />
@@ -280,10 +380,10 @@ function Lightbox({
       </div>
 
       <div
-        className="flex flex-col items-center gap-4 px-4 py-5 sm:flex-row sm:justify-between sm:px-8"
+        className="flex flex-col items-center gap-3 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-between sm:gap-4 sm:px-8 sm:pt-5 sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="max-w-2xl text-center text-[13.5px] leading-relaxed text-[#404040] sm:text-left">{shot.caption}</p>
+        <p className="max-w-2xl text-center text-[13px] leading-relaxed text-[#404040] sm:text-left sm:text-[13.5px]">{shot.caption}</p>
         {multi && (
           <div className="flex items-center gap-3">
             <SlideArrowButton direction="prev" onClick={() => onStep(-1)} label="Previous screenshot" />
@@ -316,6 +416,7 @@ function ProjectSlideCard({
   ) => void;
 }) {
   const isPresent = useIsPresent();
+  const reducedMotion = useLiveReducedMotion();
   const [tab, setTab] = useState<InfoTab>('overview');
   const idBase = `slide-info-${useId()}`;
   const tabDomId = (t: InfoTab) => `${idBase}-tab-${t}`;
@@ -347,7 +448,7 @@ function ProjectSlideCard({
       inert={!isPresent}
       aria-roledescription="slide"
       aria-label={`${project.index} — ${project.title}`}
-      className={`relative overflow-hidden rounded-[32px] border border-[#E5E5E4] bg-white p-3 shadow-[0_30px_80px_-50px_rgba(0,0,0,0.25)] sm:p-4 lg:p-5 ${
+      className={`relative overflow-hidden rounded-[24px] border border-[#E5E5E4] bg-white p-3 shadow-[0_30px_80px_-50px_rgba(0,0,0,0.25)] sm:rounded-[32px] sm:p-4 lg:p-5 ${
         isPresent ? '' : 'pointer-events-none'
       }`}
     >
@@ -356,27 +457,32 @@ function ProjectSlideCard({
         aria-hidden="true"
         custom={direction}
         variants={watermarkVariants}
-        className="pointer-events-none absolute -right-4 -bottom-16 font-display text-[11rem] leading-none font-bold tracking-[-0.06em] text-[#0A0A0A]/[0.035] select-none sm:text-[16rem] lg:-bottom-20 lg:text-[20rem]"
+        className="pointer-events-none absolute -right-4 -bottom-16 hidden font-display text-[11rem] leading-none font-bold tracking-[-0.06em] text-[#0A0A0A]/[0.035] select-none sm:block sm:text-[16rem] lg:-bottom-20 lg:text-[20rem]"
       >
         {project.index}
       </motion.span>
 
-      <div className="relative grid gap-5 lg:grid-cols-12 lg:gap-8">
+      <div className="relative grid gap-4 sm:gap-5 lg:grid-cols-12 lg:gap-8">
         {/* Visual stage */}
-        <motion.div custom={direction} variants={stageVariants} className="lg:col-span-7">
+        <motion.div custom={direction} variants={reducedMotion ? reducedStageVariants : stageVariants} className="lg:col-span-7">
           <ProjectMotionStage project={project} onOpenLightbox={onOpenLightbox} />
         </motion.div>
 
         {/* Editorial info */}
         <motion.div
           variants={infoVariants}
-          className="flex flex-col px-2 pt-1 pb-3 sm:px-3 lg:col-span-5 lg:py-4 lg:pr-4"
+          className="flex min-w-0 flex-col px-1.5 pt-1 pb-2 sm:px-3 sm:pb-3 lg:col-span-5 lg:py-4 lg:pr-4"
         >
           <motion.div custom={direction} variants={infoItem} className="flex flex-wrap items-center gap-2">
             <span
-              className="rounded-full px-2.5 py-1 font-mono text-[10px] tracking-[0.14em] uppercase"
-              style={{ backgroundColor: project.accentSoft, color: project.accent }}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] tracking-[0.14em] uppercase"
+              style={{ backgroundColor: project.accentSoft, color: '#0A0A0A' }}
             >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: project.accent }}
+              />
               {project.categoryLabel}
             </span>
             <span className="font-mono text-[10px] tracking-[0.12em] text-[#666666] uppercase">
@@ -390,10 +496,10 @@ function ProjectSlideCard({
             )}
           </motion.div>
 
-          <div className="mt-5 overflow-hidden">
+          <div className="mt-4 overflow-hidden sm:mt-5">
             <motion.h3
               variants={titleMask}
-              className="font-display text-3xl font-bold tracking-[-0.035em] text-[#0A0A0A] sm:text-4xl"
+              className="font-display text-[1.75rem] leading-tight font-bold tracking-[-0.035em] break-words text-[#0A0A0A] sm:text-4xl"
             >
               {project.title}
             </motion.h3>
@@ -408,8 +514,8 @@ function ProjectSlideCard({
           </motion.p>
 
           {/* Info tabs */}
-          <motion.div custom={direction} variants={infoItem} className="mt-6">
-            <div role="tablist" aria-label="Project details" className="flex gap-5 border-b border-[#E5E5E4]">
+          <motion.div custom={direction} variants={infoItem} className="mt-5 sm:mt-6">
+            <div role="tablist" aria-label="Project details" className="flex gap-6 border-b border-[#E5E5E4] sm:gap-5">
               {INFO_TABS.map((t) => {
                 const selected = t === tab;
                 return (
@@ -423,7 +529,7 @@ function ProjectSlideCard({
                     tabIndex={selected ? 0 : -1}
                     onClick={() => setTab(t)}
                     onKeyDown={onTabKey}
-                    className={`relative cursor-pointer pb-2.5 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
+                    className={`relative inline-flex min-h-[44px] cursor-pointer touch-manipulation items-end pb-2.5 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
                       selected ? 'text-[#0A0A0A]' : 'text-[#666666] hover:text-[#0A0A0A]'
                     }`}
                   >
@@ -453,17 +559,17 @@ function ProjectSlideCard({
                 >
                   {tab === 'overview' ? (
                     <>
-                      <p className="text-[14.5px] leading-relaxed text-[#404040]">{project.summary}</p>
+                      <p className="text-[14px] leading-relaxed text-[#404040] sm:text-[14.5px]">{project.summary}</p>
                       <dl className="mt-5 grid grid-cols-3 border-y border-[#E5E5E4]">
                         {project.metrics.map((m, i) => (
                           <div
                             key={m.label}
-                            className={`py-3 pr-2 ${i > 0 ? 'border-l border-[#E5E5E4] pl-3' : ''}`}
+                            className={`min-w-0 py-3 pr-1.5 sm:pr-2 ${i > 0 ? 'border-l border-[#E5E5E4] pl-2 sm:pl-3' : ''}`}
                           >
-                            <dt className="font-mono text-[9px] tracking-[0.14em] text-[#666666] uppercase">
+                            <dt className="font-mono text-[8.5px] leading-snug tracking-[0.1em] break-words text-[#666666] uppercase sm:text-[9px] sm:tracking-[0.14em]">
                               {m.label}
                             </dt>
-                            <dd className="mt-1 font-display text-[13px] leading-tight font-semibold tracking-[-0.01em] text-[#0A0A0A]">
+                            <dd className="mt-1 font-display text-[11.5px] leading-tight font-semibold tracking-[-0.01em] break-words text-[#0A0A0A] [overflow-wrap:anywhere] sm:text-[13px]">
                               {m.value}
                             </dd>
                           </div>
@@ -522,14 +628,14 @@ function ProjectSlideCard({
           </motion.div>
 
           {project.links && project.links.length > 0 && (
-            <motion.div custom={direction} variants={infoItem} className="mt-6 flex flex-wrap gap-2 lg:mt-auto lg:pt-6">
+            <motion.div custom={direction} variants={infoItem} className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:mt-auto lg:pt-6">
               {project.links.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
                   target={link.external ? '_blank' : undefined}
                   rel={link.external ? 'noopener noreferrer' : undefined}
-                  className="group inline-flex items-center gap-2 rounded-full bg-[#0A0A0A] px-4 py-2.5 font-mono text-[11px] tracking-[0.14em] text-[#FAFAFA] uppercase transition-colors hover:bg-[#262626] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2"
+                  className="group inline-flex min-h-[44px] w-full touch-manipulation items-center justify-center gap-2 rounded-full bg-[#0A0A0A] px-4 py-2.5 font-mono text-[11px] tracking-[0.14em] text-[#FAFAFA] uppercase transition-colors [-webkit-tap-highlight-color:transparent] hover:bg-[#262626] active:bg-[#333333] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] focus-visible:ring-offset-2 sm:w-auto sm:justify-start"
                 >
                   {link.label}
                   <ArrowUpRight
@@ -561,7 +667,12 @@ export function ProjectSlidesSection() {
   const justDraggedRef = useRef(false);
   const dragTimerRef = useRef<number | undefined>(undefined);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerTypeRef = useRef<string>('mouse');
+  const pointerCanceledRef = useRef(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLElement>(null);
+  const filterRailRef = useRef<HTMLDivElement>(null);
+  const railMountedRef = useRef(false);
 
   const projects = useMemo(
     () => (filter === 'all' ? PROJECTS : PROJECTS.filter((p) => p.category === filter)),
@@ -603,8 +714,27 @@ export function ProjectSlidesSection() {
     const delta = e.key === 'ArrowRight' ? 1 : -1;
     const next = FILTERS[(i + delta + FILTERS.length) % FILTERS.length];
     changeFilter(next.id);
-    document.getElementById(`project-filter-${next.id}`)?.focus();
+    const el = document.getElementById(`project-filter-${next.id}`);
+    // preventScroll: focusing must never yank the page vertically on mobile;
+    // the horizontal strip is scrolled explicitly instead.
+    el?.focus({ preventScroll: true });
+    centerInRail(filterRailRef.current, el);
   };
+
+  // Keep the active filmstrip item centred inside its own horizontal rail.
+  // container.scrollTo only — never scrollIntoView — so changing slides can
+  // never hijack vertical page scrolling on phones.
+  useEffect(() => {
+    const rail = railRef.current;
+    const current = rail?.querySelector<HTMLElement>('[aria-current="true"]') ?? null;
+    centerInRail(rail, current, railMountedRef.current);
+    railMountedRef.current = true;
+  }, [safeActive, filter]);
+
+  // Same for the category strip when the filter changes by tap.
+  useEffect(() => {
+    centerInRail(filterRailRef.current, document.getElementById(`project-filter-${filter}`));
+  }, [filter]);
 
   const openLightbox = useCallback(
     (shots: ProjectScreenshot[], startIndex: number, triggerEl?: HTMLElement | null) => {
@@ -699,6 +829,8 @@ export function ProjectSlidesSection() {
   // handleClickCapture can always swallow that click.
   const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     pointerStartRef.current = { x: e.clientX, y: e.clientY };
+    pointerTypeRef.current = e.pointerType;
+    pointerCanceledRef.current = false;
     // A fresh press must never inherit suppression from a previous drag.
     window.clearTimeout(dragTimerRef.current);
     justDraggedRef.current = false;
@@ -720,12 +852,20 @@ export function ProjectSlidesSection() {
     if (justDraggedRef.current) markJustDragged();
   };
 
-  const handlePanEnd = (_event: PointerEvent, info: PanInfo) => {
+  const handlePointerCancel = () => {
+    pointerCanceledRef.current = true;
+    handlePointerEnd();
+  };
+
+  const handlePanEnd = (event: PointerEvent, info: PanInfo) => {
+    // OS edge-back gestures / notifications cancel the pointer — never page on that.
+    if (pointerCanceledRef.current || event.type === 'pointercancel') return;
     const { offset, velocity } = info;
     if (Math.abs(offset.x) < Math.abs(offset.y)) return;
-    if (offset.x < -SWIPE_THRESHOLD || velocity.x < -500) {
+    const threshold = swipeThreshold(event.pointerType || pointerTypeRef.current);
+    if (offset.x < -threshold || velocity.x < -500) {
       paginate(1);
-    } else if (offset.x > SWIPE_THRESHOLD || velocity.x > 500) {
+    } else if (offset.x > threshold || velocity.x > 500) {
       paginate(-1);
     }
   };
@@ -747,11 +887,11 @@ export function ProjectSlidesSection() {
       id="slides"
       ref={sectionRef}
       aria-labelledby="slides-heading"
-      className="relative scroll-mt-20 bg-[#FAFAFA] py-20 sm:py-28"
+      className="relative scroll-mt-20 bg-[#FAFAFA] py-14 sm:py-24"
     >
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         {/* Header */}
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-4 sm:gap-6 md:flex-row md:items-end md:justify-between">
           <div>
             <motion.p
               initial={{ opacity: 0, y: 10 }}
@@ -770,13 +910,17 @@ export function ProjectSlidesSection() {
                 whileInView={{ y: '0%' }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, ease: EASE }}
-                className="font-display text-4xl font-bold tracking-[-0.04em] text-[#0A0A0A] sm:text-6xl"
+                className="font-display text-[2.4rem] leading-[1.05] font-bold tracking-[-0.04em] text-[#0A0A0A] sm:text-6xl"
               >
                 Project Slides
               </motion.h2>
             </div>
           </div>
-          <div className="inline-flex items-center gap-2 self-start rounded-full border border-[#E5E5E4] bg-white px-3.5 py-1.5 font-mono text-[10.5px] tracking-[0.14em] text-[#666666] uppercase md:self-auto">
+          <div className="inline-flex items-center gap-2 self-start rounded-full border border-[#E5E5E4] bg-white px-3 py-1.5 font-mono text-[10px] tracking-[0.14em] text-[#666666] uppercase sm:hidden">
+            <Hand className="h-3.5 w-3.5" aria-hidden="true" />
+            Swipe or tap ← →
+          </div>
+          <div className="hidden items-center gap-2 self-start rounded-full border border-[#E5E5E4] bg-white px-3.5 py-1.5 font-mono text-[10.5px] tracking-[0.14em] text-[#666666] uppercase sm:inline-flex md:self-auto">
             <Keyboard className="h-3.5 w-3.5" aria-hidden="true" />
             ← / → keys or drag
           </div>
@@ -784,9 +928,13 @@ export function ProjectSlidesSection() {
 
         {/* Filter strip */}
         <div
+          ref={filterRailRef}
+          className="no-scrollbar -mx-4 mt-6 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:mt-8 sm:overflow-visible sm:px-0"
+        >
+        <div
           role="tablist"
           aria-label="Filter projects by category"
-          className="mt-8 flex gap-1 overflow-x-auto rounded-full border border-[#E5E5E4] bg-white p-1 sm:inline-flex"
+          className="inline-flex flex-nowrap gap-1 rounded-full border border-[#E5E5E4] bg-white p-1 sm:flex-wrap"
         >
           {FILTERS.map((f) => {
             const selected = f.id === filter;
@@ -800,7 +948,7 @@ export function ProjectSlidesSection() {
                 tabIndex={selected ? 0 : -1}
                 onClick={() => changeFilter(f.id)}
                 onKeyDown={onFilterKey}
-                className={`relative shrink-0 cursor-pointer rounded-full px-4 py-2 font-mono text-[11px] tracking-[0.14em] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
+                className={`relative inline-flex min-h-[40px] shrink-0 cursor-pointer touch-manipulation items-center rounded-full px-3.5 py-2 font-mono text-[11px] tracking-[0.14em] whitespace-nowrap uppercase transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:ring-inset sm:px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
                   selected ? 'text-[#FAFAFA]' : 'text-[#666666] hover:text-[#0A0A0A]'
                 }`}
               >
@@ -816,9 +964,10 @@ export function ProjectSlidesSection() {
             );
           })}
         </div>
+        </div>
 
         {/* Arrow control bar */}
-        <div className="mt-8 flex items-center gap-4 sm:gap-6">
+        <div className="mt-6 flex items-center gap-3 sm:mt-8 sm:gap-6">
           <SlideArrowButton
             direction="prev"
             onClick={() => paginate(-1)}
@@ -826,7 +975,7 @@ export function ProjectSlidesSection() {
             pulseKey={pulse.prev}
             disabled={total <= 1}
           />
-          <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
             <RollingCounter value={safeActive + 1} total={total} dir={direction} />
             <ProgressTrack active={safeActive} total={total} accent={accent} />
           </div>
@@ -845,11 +994,10 @@ export function ProjectSlidesSection() {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerEnd}
-          onPointerCancel={handlePointerEnd}
+          onPointerCancel={handlePointerCancel}
           onPanEnd={handlePanEnd}
           onClickCapture={handleClickCapture}
-          style={{ touchAction: 'pan-y' }}
-          className="relative mt-6"
+          className="relative mt-5 [touch-action:pan-y_pinch-zoom] sm:mt-6"
           aria-roledescription="carousel"
           aria-label="Project slides"
         >
@@ -866,12 +1014,16 @@ export function ProjectSlidesSection() {
         </motion.div>
 
         {/* Filmstrip rail */}
-        <nav aria-label="Jump to project slide" className="mt-6 overflow-x-auto">
+        <nav
+          ref={railRef}
+          aria-label="Jump to project slide"
+          className="no-scrollbar -mx-4 mt-5 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:mt-6 sm:snap-none sm:scroll-px-0 sm:px-0"
+        >
           <ol className="flex min-w-max gap-1 border-t border-[#E5E5E4]">
             {projects.map((p, i) => {
               const current = i === safeActive;
               return (
-                <li key={p.id} className="relative">
+                <li key={p.id} className="relative shrink-0 snap-center">
                   {current && (
                     <motion.span
                       layoutId="slideRailIndicator"
@@ -884,7 +1036,7 @@ export function ProjectSlidesSection() {
                     type="button"
                     onClick={() => jumpTo(i)}
                     aria-current={current ? 'true' : undefined}
-                    className={`flex cursor-pointer items-baseline gap-2 px-3 pt-3.5 pb-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
+                    className={`flex min-h-[44px] cursor-pointer touch-manipulation items-center gap-2 px-3 pt-3 pb-2 text-left transition-colors [-webkit-tap-highlight-color:transparent] focus-visible:ring-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A] ${
                       current ? 'text-[#0A0A0A]' : 'text-[#666666] hover:text-[#0A0A0A]'
                     }`}
                   >

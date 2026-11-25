@@ -5,7 +5,7 @@ import { PROFILE } from '../data/portfolioData';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const CHANNEL_ACTION =
-  'inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-[#E5E5E4] bg-white px-2.5 font-mono text-[11px] text-[#525252] transition-colors hover:border-[#0A0A0A] hover:text-[#0A0A0A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A]';
+  'inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-full border border-[#E5E5E4] bg-white px-2.5 font-mono text-[11px] text-[#525252] transition-colors hover:border-[#0A0A0A] hover:text-[#0A0A0A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A]';
 
 function CopyButton({ label, value }: { label: string; value: string }) {
   const [feedback, setFeedback] = useState<'copied' | 'failed' | null>(null);
@@ -71,15 +71,15 @@ export function ContactSection() {
     <section
       id="contact"
       aria-labelledby="contact-heading"
-      className="scroll-mt-16 border-t border-[#E5E5E4] pt-20 pb-14 sm:pt-28"
+      className="scroll-mt-20 border-t border-[#E5E5E4] py-14 sm:py-24"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="relative grid items-center gap-8 rounded-[32px] border border-[#E5E5E4] bg-white p-7 sm:gap-10 sm:p-12 lg:grid-cols-12">
+        <div className="relative grid items-center gap-6 rounded-[32px] border border-[#E5E5E4] bg-white p-5 sm:gap-10 sm:p-12 lg:grid-cols-12">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 font-mono text-[10px] text-[#9A9A9A]">
-            <span className="absolute top-3 left-4">+</span>
-            <span className="absolute top-3 right-4">+</span>
-            <span className="absolute bottom-3 left-4">+</span>
-            <span className="absolute right-4 bottom-3">+</span>
+            <span className="absolute top-1.5 left-4 sm:top-3">+</span>
+            <span className="absolute top-1.5 right-4 sm:top-3">+</span>
+            <span className="absolute bottom-1.5 left-4 sm:bottom-3">+</span>
+            <span className="absolute right-4 bottom-1.5 sm:bottom-3">+</span>
           </div>
 
           <div className="min-w-0 lg:col-span-6">
@@ -100,10 +100,10 @@ export function ContactSection() {
               Have a game, offline-first app, web system, or university tech build in mind?
               I’d like to hear what you’re working on.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
               <a
                 href={emailLink}
-                className="group inline-flex items-center gap-2.5 rounded-full bg-[#0A0A0A] px-4 py-3 font-mono text-[11px] font-medium tracking-[0.1em] text-white uppercase transition-colors hover:bg-[#262626] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A]"
+                className="group inline-flex min-h-[44px] grow items-center justify-center gap-2.5 rounded-full bg-[#0A0A0A] px-4 py-3 font-mono text-[11px] font-medium tracking-[0.1em] text-white uppercase transition-colors hover:bg-[#262626] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A] sm:grow-0"
               >
                 Send Email
                 <ArrowRight
@@ -115,7 +115,7 @@ export function ContactSection() {
                 href={PROFILE.githubUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-[#E5E5E4] bg-white px-4 py-3 font-mono text-[11px] font-medium tracking-[0.1em] uppercase transition-colors hover:border-[#0A0A0A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A]"
+                className="inline-flex min-h-[44px] grow items-center justify-center gap-2 rounded-full border border-[#E5E5E4] bg-white px-4 py-3 font-mono text-[11px] font-medium tracking-[0.1em] uppercase transition-colors hover:border-[#0A0A0A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A0A0A] sm:grow-0"
               >
                 <Github aria-hidden="true" className="size-4" />
                 GitHub
@@ -125,7 +125,7 @@ export function ContactSection() {
 
           <ul className="min-w-0 divide-y divide-[#E5E5E4] rounded-2xl border border-[#E5E5E4] bg-[#FAFAFA] lg:col-span-6">
             {channels.map(({ label, value, icon: Icon, href, copyLabel }) => (
-              <li key={label} className="flex items-center gap-2.5 px-3 py-3.5 sm:gap-3 sm:px-4">
+              <li key={label} className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3.5">
                 <span className="hidden size-9 shrink-0 place-items-center rounded-xl border border-[#E5E5E4] bg-white sm:grid">
                   <Icon aria-hidden="true" className="size-4" strokeWidth={1.6} />
                 </span>

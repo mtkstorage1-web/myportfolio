@@ -175,22 +175,22 @@ export const PROJECTS: ProjectItem[] = [
     ],
     screenshots: [
       {
-        src: './projects/apogex/12_flight_pilot.png',
+        src: './projects/apogex/12_flight_pilot.webp',
         caption: 'Deep Space Outbound — Kestrel twin-thruster transit with live hull & crew telemetry',
         aspect: 'wide',
       },
       {
-        src: './projects/apogex/05_build.png',
+        src: './projects/apogex/05_build.webp',
         caption: 'Earth Spaceport — Parts Shop, pad docking ring, and live spacecraft systems check',
         aspect: 'wide',
       },
       {
-        src: './projects/apogex/19_blaster.png',
+        src: './projects/apogex/19_blaster.webp',
         caption: 'Frontier Surface — Squad gunplay and glowing Science Flag extraction on Moon arena',
         aspect: 'wide',
       },
       {
-        src: './projects/apogex/sp09_liftoff.png',
+        src: './projects/apogex/sp09_liftoff.webp',
         caption: 'Mission Control — Multi-stage rocket assembly and full-thrust orbital liftoff',
         aspect: 'wide',
       },
@@ -234,27 +234,27 @@ export const PROJECTS: ProjectItem[] = [
     ],
     screenshots: [
       {
-        src: './projects/flowscope/theme-preview-grid.png',
+        src: './projects/flowscope/theme-preview-grid.webp',
         caption: 'Theme Engine — Live preview grid with independent particle fields, rings & sound profiles',
         aspect: 'portrait',
       },
       {
-        src: './projects/flowscope/satisfaction-hub.png',
+        src: './projects/flowscope/satisfaction-hub.webp',
         caption: 'Satisfaction Hub — Mood, Sleep, and Food unified on one seven-day wellbeing dial',
         aspect: 'portrait',
       },
       {
-        src: './projects/flowscope/focus.png',
+        src: './projects/flowscope/focus.webp',
         caption: 'Focus Surface — Drift-proof timer ring with live mood trace and streak summary',
         aspect: 'portrait',
       },
       {
-        src: './projects/flowscope/history-heatmap.png',
+        src: './projects/flowscope/history-heatmap.webp',
         caption: 'Work Log — Satisfaction heatmap and session history filtered by mood tags',
         aspect: 'portrait',
       },
       {
-        src: './projects/flowscope/money.png',
+        src: './projects/flowscope/money.webp',
         caption: 'Money Tab — Out/in/net tracking in Myanmar Kyat (MMK) correlated with daily mood',
         aspect: 'portrait',
       },

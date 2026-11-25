@@ -13,14 +13,13 @@ export function ChronicleSection() {
   });
   const spineScale = useTransform(scrollYProgress, [0.03, 0.97], [0, 1]);
 
-  // Clipping horizontal overflow keeps the sticky column tied to the viewport.
   return (
     <section
       id="journey"
       aria-labelledby="journey-heading"
-      className="scroll-mt-16 border-t border-[#E5E5E4] [body:has(&)]:overflow-x-clip"
+      className="scroll-mt-20 border-t border-[#E5E5E4] py-14 sm:py-24"
     >
-      <div className="mx-auto grid max-w-6xl items-start gap-10 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-12 lg:gap-14">
+      <div className="mx-auto grid max-w-6xl items-start gap-8 px-4 sm:gap-10 sm:px-6 lg:grid-cols-12 lg:gap-14">
         <div className="lg:sticky lg:top-24 lg:col-span-5">
           <p className="font-mono text-[11px] tracking-[0.16em] text-[#666666]">02 // JOURNEY</p>
           <div className="mt-3 overflow-hidden">
@@ -40,7 +39,7 @@ export function ChronicleSection() {
             complete offline-first software and hands-on hardware builds.
           </p>
 
-          <div className="mt-8 rounded-2xl border border-[#E5E5E4] bg-white p-5 sm:p-6">
+          <div className="mt-6 rounded-2xl border border-[#E5E5E4] bg-white p-5 sm:mt-8 sm:p-8">
             <p className="font-mono text-[10px] tracking-[0.14em] text-[#666666] uppercase">
               Academic Distinction
             </p>
@@ -75,14 +74,14 @@ export function ChronicleSection() {
               className="h-full w-full origin-top bg-[#0A0A0A]"
             />
           </div>
-          <ol aria-label="Journey milestones" className="grid gap-4 pl-7 sm:gap-5 sm:pl-9">
+          <ol aria-label="Journey milestones" className="grid gap-4 pl-5 sm:gap-5 sm:pl-9">
             {CHRONICLE_MILESTONES.map((milestone) => (
               <li key={milestone.era} className="relative">
                 <span
                   aria-hidden="true"
-                  className="absolute top-7 -left-7 size-2.5 rounded-full border border-[#0A0A0A] bg-white sm:-left-9"
+                  className="absolute top-7 -left-5 size-2.5 rounded-full border border-[#0A0A0A] bg-white sm:-left-9"
                 />
-                <article className="rounded-2xl border border-[#E5E5E4] bg-white p-5 sm:p-6">
+                <article className="rounded-2xl border border-[#E5E5E4] bg-white p-5 sm:p-8">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-mono text-[11px] tracking-[0.12em] text-[#666666]">{milestone.era}</p>
                     {milestone.highlight && (
