@@ -2,7 +2,7 @@
 
 Clean minimalist personal portfolio with an interactive 7-project slide deck, directional `< — >` arrow animations, and bespoke graphic-motion stages.
 
-**Live:** https://minnthantko-portfolio.netlify.app
+**Live:** https://minnlabs.netlify.app
 
 ## Stack
 - React 19 + TypeScript (strict)
