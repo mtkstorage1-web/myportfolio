@@ -80,12 +80,6 @@ export const PROFILE = {
   email: 'mtkstorage1@gmail.com',
   githubHandle: 'mtkstorage1-web',
   githubUrl: 'https://github.com/mtkstorage1-web',
-  flowScopeRepoUrl: 'https://github.com/mtkstorage1-web/FlowScope',
-  apogexRepoUrl: 'https://github.com/mtkstorage1-web/apogex',
-  knowledgeExplorerRepoUrl: 'https://github.com/mtkstorage1-web/knowledge-explorer',
-  agentWidgetRepoUrl: 'https://github.com/mtkstorage1-web/agent-widget',
-  mindBenchRepoUrl: 'https://github.com/mtkstorage1-web/mindbench-pro-max',
-  ggPartnerRepoUrl: 'https://github.com/mtkstorage1-web/ggpartner',
   facebookName: 'Minn Ye Kyaw Htin',
   ggPartnerLiveUrl: 'https://ggpartner.netlify.app',
 };
@@ -195,13 +189,6 @@ export const PROJECTS: ProjectItem[] = [
         aspect: 'wide',
       },
     ],
-    links: [
-      {
-        label: 'GitHub Repository',
-        href: PROFILE.apogexRepoUrl,
-        external: true,
-      },
-    ],
   },
   {
     id: 'flowscope',
@@ -259,13 +246,6 @@ export const PROJECTS: ProjectItem[] = [
         aspect: 'portrait',
       },
     ],
-    links: [
-      {
-        label: 'GitHub Repository',
-        href: PROFILE.flowScopeRepoUrl,
-        external: true,
-      },
-    ],
   },
   {
     id: 'knowledge-explorer',
@@ -295,13 +275,6 @@ export const PROJECTS: ProjectItem[] = [
       { label: 'Visual Labs', value: '11 Live Labs' },
       { label: 'Views', value: 'Grid / Map / Tree' },
       { label: 'Mode', value: '100% Offline PWA' },
-    ],
-    links: [
-      {
-        label: 'GitHub Repository',
-        href: PROFILE.knowledgeExplorerRepoUrl,
-        external: true,
-      },
     ],
   },
   {
@@ -333,13 +306,6 @@ export const PROJECTS: ProjectItem[] = [
       { label: 'Sensors', value: 'CPU / GPU / Die / SSD' },
       { label: 'Runtime', value: 'Native Binary' },
     ],
-    links: [
-      {
-        label: 'GitHub Repository',
-        href: PROFILE.agentWidgetRepoUrl,
-        external: true,
-      },
-    ],
   },
   {
     id: 'mindbench',
@@ -369,13 +335,6 @@ export const PROJECTS: ProjectItem[] = [
       { label: 'Codebase', value: '3,291 Lines' },
       { label: 'Mini-Games', value: '7 Cognitive + Casino' },
       { label: 'Brain Tiers', value: '9 (Up to 1T×)' },
-    ],
-    links: [
-      {
-        label: 'GitHub Repository',
-        href: PROFILE.mindBenchRepoUrl,
-        external: true,
-      },
     ],
   },
   {
@@ -411,11 +370,6 @@ export const PROJECTS: ProjectItem[] = [
       {
         label: 'Visit Live Site',
         href: PROFILE.ggPartnerLiveUrl,
-        external: true,
-      },
-      {
-        label: 'GitHub Repository',
-        href: PROFILE.ggPartnerRepoUrl,
         external: true,
       },
     ],
