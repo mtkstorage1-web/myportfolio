@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-paper: #fafafa;
+  --color-surface: #ffffff;
+  --color-subtle: #f3f3f2;
+  --color-ink: #0a0a0a;
+  --color-ink-muted: #666666;
+  --color-ink-faint: #9a9a9a;
+  --color-hairline: #e5e5e4;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    background-color: #fafafa;
+    color: #0a0a0a;
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    overflow-x: hidden;
+    background-color: #fafafa;
+    color: #0a0a0a;
+  }
+
+  ::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #fafafa;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d4d4d2;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a3a3a0;
+  }
+}
+
+/* Crisp Swiss editorial drafting grid */
+.bg-draft-grid {
+  background-image:
+    linear-gradient(to right, rgba(10, 10, 10, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(10, 10, 10, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+.bg-draft-dots {
+  background-image: radial-gradient(rgba(10, 10, 10, 0.14) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Motion graphics rotating architectural accents */
+@keyframes slowSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slowSpinReverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes pulseSoft {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+.animate-slow-spin {
+  animation: slowSpin 38s linear infinite;
+}
+
+.animate-slow-spin-reverse {
+  animation: slowSpinReverse 52s linear infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulseSoft 3.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slow-spin,
+  .animate-slow-spin-reverse,
+  .animate-pulse-soft {
+    animation: none !important;
+  }
+}

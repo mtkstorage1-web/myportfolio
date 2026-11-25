@@ -1,0 +1,11 @@
+# Dependencies & builds
+node_modules/
+dist/
+tsconfig.tsbuildinfo
+
+# Local Netlify & OS files
+.netlify/
+.DS_Store
+.env
+.env.*
+.claude/
